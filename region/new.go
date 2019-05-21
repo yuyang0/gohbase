@@ -13,7 +13,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/tsuna/gohbase/hrpc"
+	"github.com/yuyang0/gohbase/hrpc"
 )
 
 // NewClient creates a new RegionClient.
