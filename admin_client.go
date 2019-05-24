@@ -19,6 +19,10 @@ import (
 
 // AdminClient to perform admistrative operations with HMaster
 type AdminClient interface {
+	ListNamespace(t *hrpc.ListNamespace) ([]string, error)
+	CreateNamespace(t *hrpc.CreateNamespace) error
+	DeleteNamespace(t *hrpc.DeleteNamespace) error
+	ListTableNames(t *hrpc.ListTableName) ([]string, error)
 	CreateTable(t *hrpc.CreateTable) error
 	DeleteTable(t *hrpc.DeleteTable) error
 	EnableTable(t *hrpc.EnableTable) error
@@ -67,6 +71,66 @@ func (c *client) ClusterStatus() (*pb.ClusterStatus, error) {
 	}
 
 	return r.GetClusterStatus(), nil
+}
+
+func (c *client) ListNamespace(t *hrpc.ListNamespace) ([]string, error) {
+	pbmsg, err := c.SendRPC(t)
+	if err != nil {
+		return nil, err
+	}
+
+	r, ok := pbmsg.(*pb.ListNamespaceDescriptorsResponse)
+	if !ok {
+		return nil, fmt.Errorf("sendRPC returned not a ListNamespaceDescriptorsResponse")
+	}
+	namespaces := make([]string, 0, len(r.NamespaceDescriptor))
+	for _, desc := range r.NamespaceDescriptor {
+		namespaces = append(namespaces, string(desc.Name))
+	}
+	return namespaces, nil
+}
+
+func (c *client) CreateNamespace(t *hrpc.CreateNamespace) error {
+	pbmsg, err := c.SendRPC(t)
+	if err != nil {
+		return err
+	}
+
+	_, ok := pbmsg.(*pb.CreateNamespaceResponse)
+	if !ok {
+		return fmt.Errorf("sendRPC returned not a CreateNamespaceResponse")
+	}
+	return nil
+}
+
+func (c *client) DeleteNamespace(t *hrpc.DeleteNamespace) error {
+	pbmsg, err := c.SendRPC(t)
+	if err != nil {
+		return err
+	}
+
+	_, ok := pbmsg.(*pb.DeleteNamespaceResponse)
+	if !ok {
+		return fmt.Errorf("sendRPC returned not a DeleteNamespaceResponse")
+	}
+	return nil
+}
+
+func (c *client) ListTableNames(t *hrpc.ListTableName) ([]string, error) {
+	pbmsg, err := c.SendRPC(t)
+	if err != nil {
+		return nil, err
+	}
+
+	r, ok := pbmsg.(*pb.ListTableNamesByNamespaceResponse)
+	if !ok {
+		return nil, fmt.Errorf("sendRPC returned not a ListNamespaceDescriptorsResponse")
+	}
+	names := make([]string, 0, len(r.TableName))
+	for _, tn := range r.TableName {
+		names = append(names, string(tn.Qualifier))
+	}
+	return names, nil
 }
 
 func (c *client) CreateTable(t *hrpc.CreateTable) error {

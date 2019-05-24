@@ -12,10 +12,64 @@ import (
 	"github.com/yuyang0/gohbase/pb"
 )
 
+// CreateNamespace represents a CreateNamespace HBase call
+type CreateNamespace struct {
+	base
+	namespace []byte
+	conf map[string]string
+}
+
+// Name returns the name of this RPC call.
+func (cn *CreateNamespace) Name() string {
+	return "CreateNamespace"
+}
+
+// ToProto converts the RPC into a protobuf message
+func (cn *CreateNamespace) ToProto() proto.Message {
+	var configuration []*pb.NameStringPair
+
+	for k, v := range cn.conf {
+		configuration = append(configuration, &pb.NameStringPair{Name: &k, Value: &v})
+	}
+	return &pb.CreateNamespaceRequest{
+		NamespaceDescriptor: &pb.NamespaceDescriptor{
+			Name:          cn.namespace,
+			Configuration: configuration,
+		},
+	}
+}
+
+// NewResponse creates an empty protobuf message to read the response of this
+// RPC.
+func (cn *CreateNamespace) NewResponse() proto.Message {
+	return &pb.CreateNamespaceResponse{}
+}
+
+// NewCreateNamespace creates a new CreateNamespace request that will create the given
+// namespace in HBase.
+// For use by the admin client.
+func NewCreateNamespace(ctx context.Context, namespace []byte,
+	conf map[string]string,
+	options ...func(*CreateNamespace)) *CreateNamespace {
+	cn := &CreateNamespace{
+		base: base{
+			ctx:      ctx,
+			resultch: make(chan RPCResult, 1),
+		},
+		namespace:namespace,
+		conf: conf,
+	}
+	for _, option := range options {
+		option(cn)
+	}
+	return cn
+}
+
 // CreateTable represents a CreateTable HBase call
 type CreateTable struct {
 	base
 
+	namespace []byte
 	families  map[string]map[string]string
 	splitKeys [][]byte
 }
@@ -40,12 +94,15 @@ var defaultAttributes = map[string]string{
 func NewCreateTable(ctx context.Context, table []byte,
 	families map[string]map[string]string,
 	options ...func(*CreateTable)) *CreateTable {
+
+	namespace, table := splitTableName(table)
 	ct := &CreateTable{
 		base: base{
 			table:    table,
 			ctx:      ctx,
 			resultch: make(chan RPCResult, 1),
 		},
+		namespace:namespace,
 		families: make(map[string]map[string]string, len(families)),
 	}
 	for _, option := range options {
@@ -96,7 +153,7 @@ func (ct *CreateTable) ToProto() proto.Message {
 		TableSchema: &pb.TableSchema{
 			TableName: &pb.TableName{
 				// TODO: handle namespaces
-				Namespace: []byte("default"),
+				Namespace: ct.namespace,
 				Qualifier: ct.table,
 			},
 			ColumnFamilies: pbFamilies,

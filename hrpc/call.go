@@ -6,6 +6,7 @@
 package hrpc
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -274,3 +275,12 @@ func toLocalCells(pbr *pb.Result) []*Cell {
 }
 
 // We can now define any helper functions on Result that we want.
+func splitTableName(table []byte) ([]byte, []byte) {
+	namespace := []byte("default")
+	parts := bytes.SplitN(table, []byte{':'}, 2)
+	if len(parts) == 2 {
+		namespace = parts[0]
+		table = parts[1]
+	}
+	return namespace, table
+}
