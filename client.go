@@ -43,8 +43,7 @@ type Client interface {
 	Delete(d *hrpc.Mutate) (*hrpc.Result, error)
 	Append(a *hrpc.Mutate) (*hrpc.Result, error)
 	Increment(i *hrpc.Mutate) (int64, error)
-	CheckAndPut(p *hrpc.Mutate, family string, qualifier string,
-		expectedValue []byte) (bool, error)
+	CheckAndPut(p *hrpc.CheckAndPut) (bool, error)
 	Close()
 }
 
@@ -269,13 +268,7 @@ func (c *client) mutate(m *hrpc.Mutate) (*hrpc.Result, error) {
 	return hrpc.ToLocalResult(r.Result), nil
 }
 
-func (c *client) CheckAndPut(p *hrpc.Mutate, family string,
-	qualifier string, expectedValue []byte) (bool, error) {
-	cas, err := hrpc.NewCheckAndPut(p, family, qualifier, expectedValue)
-	if err != nil {
-		return false, err
-	}
-
+func (c *client) CheckAndPut(cas *hrpc.CheckAndPut) (bool, error) {
 	pbmsg, err := c.SendRPC(cas)
 	if err != nil {
 		return false, err

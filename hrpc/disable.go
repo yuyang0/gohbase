@@ -15,17 +15,20 @@ import (
 // DisableTable represents a DisableTable HBase call
 type DisableTable struct {
 	base
+	namespace []byte
 }
 
 // NewDisableTable creates a new DisableTable request that will disable the
 // given table in HBase. For use by the admin client.
 func NewDisableTable(ctx context.Context, table []byte) *DisableTable {
+	namespace, table := splitTableName(table)
 	return &DisableTable{
-		base{
+		base: base{
 			table:    table,
 			ctx:      ctx,
 			resultch: make(chan RPCResult, 1),
 		},
+		namespace: namespace,
 	}
 }
 
@@ -38,8 +41,7 @@ func (dt *DisableTable) Name() string {
 func (dt *DisableTable) ToProto() proto.Message {
 	return &pb.DisableTableRequest{
 		TableName: &pb.TableName{
-			// TODO: handle namespaces
-			Namespace: []byte("default"),
+			Namespace: dt.namespace,
 			Qualifier: dt.table,
 		},
 	}

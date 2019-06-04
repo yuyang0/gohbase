@@ -15,17 +15,21 @@ import (
 // EnableTable represents a EnableTable HBase call
 type EnableTable struct {
 	base
+	namespace []byte
 }
 
 // NewEnableTable creates a new EnableTable request that will enable the
 // given table in HBase. For use by the admin client.
 func NewEnableTable(ctx context.Context, table []byte) *EnableTable {
+	namespace, table := splitTableName(table)
+
 	return &EnableTable{
-		base{
+		base: base{
 			table:    table,
 			ctx:      ctx,
 			resultch: make(chan RPCResult, 1),
 		},
+		namespace: namespace,
 	}
 }
 
@@ -38,8 +42,7 @@ func (et *EnableTable) Name() string {
 func (et *EnableTable) ToProto() proto.Message {
 	return &pb.EnableTableRequest{
 		TableName: &pb.TableName{
-			// TODO: handle namespaces
-			Namespace: []byte("default"),
+			Namespace: et.namespace,
 			Qualifier: et.table,
 		},
 	}
