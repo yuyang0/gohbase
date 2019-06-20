@@ -8,6 +8,7 @@ package gohbase
 import (
 	"encoding/binary"
 	"fmt"
+	"path"
 	"sync"
 	"time"
 
@@ -45,6 +46,8 @@ type Client interface {
 	Increment(i *hrpc.Mutate) (int64, error)
 	CheckAndPut(p *hrpc.CheckAndPut) (bool, error)
 	Close()
+
+	NewLock() (*zk.Lock, error)
 }
 
 // RPCClient is core client of gohbase. It's exposed for testing.
@@ -207,6 +210,7 @@ func (c *client) Close() {
 		}
 		c.clients.closeAll()
 	})
+	c.zkClient.Close()
 }
 
 func (c *client) Scan(s *hrpc.Scan) hrpc.Scanner {
@@ -285,4 +289,9 @@ func (c *client) CheckAndPut(cas *hrpc.CheckAndPut) (bool, error) {
 	}
 
 	return r.GetProcessed(), nil
+}
+
+func (c *client) NewLock() (*zk.Lock, error) {
+	p := path.Join(c.zkRoot, "~~haha-1-~~-kaka.lck")
+	return c.zkClient.NewLock(p)
 }

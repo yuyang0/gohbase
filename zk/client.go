@@ -21,6 +21,8 @@ import (
 	"github.com/yuyang0/gohbase/pb"
 )
 
+type Lock = zk.Lock
+
 type logger struct{}
 
 func (l *logger) Printf(format string, args ...interface{}) {
@@ -53,11 +55,14 @@ const (
 // Client is an interface of client that retrieves meta infomation from zookeeper
 type Client interface {
 	LocateResource(ResourceName) (string, error)
+	NewLock(path string) (*zk.Lock, error)
+	Close()
 }
 
 type client struct {
 	zks            []string
 	sessionTimeout time.Duration
+	conn           *zk.Conn
 }
 
 // NewClient establishes connection to zookeeper and returns the client
@@ -66,6 +71,17 @@ func NewClient(zkquorum string, st time.Duration) Client {
 		zks:            strings.Split(zkquorum, ","),
 		sessionTimeout: st,
 	}
+}
+
+func (c *client) connectIfNeeded() error {
+	if c.conn == nil {
+		conn, _, err := zk.Connect(c.zks, c.sessionTimeout)
+		if err != nil {
+			return fmt.Errorf("error connecting to ZooKeeper at %v: %s", c.zks, err)
+		}
+		c.conn = conn
+	}
+	return nil
 }
 
 // LocateResource returns address of the server for the specified resource.
@@ -115,4 +131,19 @@ func (c *client) LocateResource(resource ResourceName) (string, error) {
 		server = master.Master
 	}
 	return net.JoinHostPort(*server.HostName, fmt.Sprint(*server.Port)), nil
+}
+
+func (c *client) NewLock(path string) (*zk.Lock, error) {
+	err := c.connectIfNeeded()
+	if err != nil {
+		return nil, err
+	}
+	lck := zk.NewLock(c.conn, path, zk.WorldACL(zk.PermAll))
+	return lck,  nil
+}
+
+func (c *client) Close() {
+	if c.conn != nil {
+		c.conn.Close()
+	}
 }
