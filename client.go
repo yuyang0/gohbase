@@ -8,7 +8,6 @@ package gohbase
 import (
 	"encoding/binary"
 	"fmt"
-	"path"
 	"sync"
 	"time"
 
@@ -47,7 +46,8 @@ type Client interface {
 	CheckAndPut(p *hrpc.CheckAndPut) (bool, error)
 	Close()
 
-	NewLock() (*zk.Lock, error)
+	// lock the specified zookeeper path
+	NewLock(p string) (*zk.Lock, error)
 }
 
 // RPCClient is core client of gohbase. It's exposed for testing.
@@ -291,7 +291,6 @@ func (c *client) CheckAndPut(cas *hrpc.CheckAndPut) (bool, error) {
 	return r.GetProcessed(), nil
 }
 
-func (c *client) NewLock() (*zk.Lock, error) {
-	p := path.Join(c.zkRoot, "~~haha-1-~~-kaka.lck")
+func (c *client) NewLock(p string) (*zk.Lock, error) {
 	return c.zkClient.NewLock(p)
 }
